@@ -89,8 +89,8 @@
 
               let rows = table_board.rows;
               if (0 <= x && x < gameState.width && 0 <= y && y < gameState.height) {
-                if (contents_copied[y][x] != "<font color=\"red\">〇</font>" && contents_copied[y][x] != "<font color=\"blue\">〇</font>") {
-                  contents_copied[y][x] = "・";
+                if (contents_copied[y][x] != STONERED && contents_copied[y][x] != STONEBLUE) {
+                  contents_copied[y][x] = EMPTYCELL;
                 }
               }
             }
@@ -106,8 +106,8 @@
 
               let rows = table_board.rows;
               if (0 <= x && x < gameState.width && 0 <= y && y < gameState.height) {
-                if (contents_copied[y][x] != "<font color=\"red\">〇</font>" && contents_copied[y][x] != "<font color=\"blue\">〇</font>") {
-                  contents_copied[y][x] = "・";
+                if (contents_copied[y][x] != STONERED && contents_copied[y][x] != STONEBLUE) {
+                  contents_copied[y][x] = EMPTYCELL;
                 }
               }
             }
@@ -133,13 +133,13 @@
           let stoneBlue = 0;
           for (let i = 0; i < gameState.height; i++) {
             for (let j = 0; j < gameState.width; j++) {
-              if (contents_copied[i][j] == "<font color=\"red\">〇</font>") {
+              if (contents_copied[i][j] == STONERED) {
                 nonAvailableCell++;
                 stoneRed++;
-              } else if (contents_copied[i][j] == "<font color=\"blue\">〇</font>") {
+              } else if (contents_copied[i][j] == STONEBLUE) {
                 nonAvailableCell++;
                 stoneBlue++
-              } else if (contents_copied[i][j] == "・") {
+              } else if (contents_copied[i][j] == EMPTYCELL) {
                 nonAvailableCell++;
               }
             }
@@ -287,9 +287,9 @@
         for (let i = 0; i < gameState.height; i++) {
           for (let j = 0; j < gameState.width; j++) {
             if (gameState.stones[i][j] == 0) {
-              gameState.boardcontents[i][j] = "<font color=\"red\">〇</font>";
+              gameState.boardcontents[i][j] = STONERED;
             } else if (gameState.stones[i][j] == 1) {
-              gameState.boardcontents[i][j] = "<font color=\"blue\">〇</font>";
+              gameState.boardcontents[i][j] = STONEBLUE;
             }
           }
         }
@@ -361,6 +361,9 @@
       let result = document.getElementById("result");
 
       let d = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+      const STONERED = "<font color=\"red\">〇</font>";
+      const STONEBLUE = "<font color=\"blue\">〇</font>";
+      const EMPTYCELL = "";
 
       let button_board = document.getElementById("button_board");
       button_board.addEventListener("click", boardsubmit);

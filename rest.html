@@ -247,6 +247,10 @@
                 break;
               }
 
+              if (stones[y][x] == turn && j == 1) {
+                break;
+              }
+
               if (stones[y][x] == turn && j >= 2) {
                 sanded_flag = 1;
                 for (let k = 0; k < j; k++) {

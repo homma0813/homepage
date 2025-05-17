@@ -24,7 +24,8 @@
 
     <p id="prev1"></p>
     <p id="prev2"></p>
-    <p id="player"><font color="red">赤</font>の手番です。</p>
+    <p id="player"></p>
+    <p id="result"></p>
 
     <script>
       function boardsubmit(){
@@ -32,6 +33,13 @@
 
         H = Number(input_boardH.value);
         W = Number(input_boardW.value);
+
+        stone_prev1 = [-100, -100];
+        stone_prev2 = [-100, -100];
+
+        turn = 0;
+
+        player.innerHTML = "<font color=\"red\">赤</font>の手番です。";
 
         if (H > 0 && W > 0) {
           var buttons = [];

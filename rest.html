@@ -13,7 +13,8 @@
 
     <p>
       盤面サイズ：<br>
-      縦 <input type="number" id="input_boardH" value="10" style="width:30px;height:15px" min="1"> × 横 <input type="number" id="input_boardW" value="10" style="width:30px;height:15px" min="1">
+      縦 <input type="number" id="input_boardH" value="10" style="width:30px;height:15px" min="1"> × 横 <input type="number" id="input_boardW" value="10" style="width:30px;height:15px" min="1"> <br>
+      挟んだ時のボーナス <input type=="number" id="input_bonus" value="0" style="width:30px;height:15px" min="-1"> 回 ※-1で無限にボーナスを獲得
     </p>
     <p>
       <input type="button" value="決定" id="button_board">
@@ -41,6 +42,11 @@
         gameState.stone_prev2 = [-100, -100];
 
         gameState.turn = 0;
+
+        gameState.bonus_max = Number(input_bonus.value);
+        if (gameState.bonus_max == -1) {
+          gameState.bonus_max = gameState.height * gameState.width + 1;
+        }
 
         player.innerHTML = "<font color=\"red\">赤</font>の手番です。";
 
@@ -162,6 +168,7 @@
         let opposite = 1 - gameState.turn;
         let Sanded = [1, 1, 1, 1, 1, 1, 1, 1];
         let sanded_flag = 0;
+
         for (let i = 0; i < 8; i++) {
           let dx = d[i][0];
           let dy = d[i][1];
@@ -174,7 +181,7 @@
             continue;
           }
 
-          for (let j = 1; j < gameState.width; j++) {
+          for (let j = 1; j < Math.max(gameState.width, gameState.height); j++) {
             let x = this.coordinateX + (j * dx);
             let y = this.coordinateY + (j * dy);
 
@@ -210,6 +217,8 @@
 
               if (gameState.stones[y][x] == gameState.turn) {
                 gameState.stones[y][x] = opposite;
+              } else if (gameState.stones[y][x] == opposite) {
+                break;
               }
             }
 
@@ -223,9 +232,13 @@
 
               if (gameState.stones[y][x] == gameState.turn) {
                 gameState.stones[y][x] = opposite;
+              } else if (gameState.stones[y][x] == opposite) {
+                break;
               }
             }
+
             sanded_flag = 1;
+            //alert("こんにちは！");
             gameState.turn = 1 - gameState.turn;
           }
         }
@@ -237,8 +250,8 @@
             let dy = d[i][1];
 
             for (let j = 1; j < Math.max(gameState.height, gameState.width); j++) {
-              let x = this.coordinateX + j * dx;
-              let y = this.coordinateY + j * dy;
+              let x = this.coordinateX + (j * dx);
+              let y = this.coordinateY + (j * dy);
 
               if (x < 0 || x >= gameState.width || y < 0 || y >= gameState.height) {
                 break;
@@ -253,22 +266,26 @@
               }
 
               if (gameState.stones[y][x] == gameState.turn && j >= 2) {
+                if (sanded_flag == 0) {
+                  bonuscount = bonuscount + 1;
+                }
+
                 sanded_flag = 1;
                 for (let k = 0; k < j; k++) {
-                  let x1 = this.coordinateX + k * dx;
-                  let y1 = this.coordinateY + k * dy;
-
+                  let x1 = this.coordinateX + (k * dx);
+                  let y1 = this.coordinateY + (k * dy);
                   gameState.stones[y1][x1] = gameState.turn;
                 }
+                break;
               }
             }
-
           }
         }
 
-        if (sanded_flag == 0) {
+        if (sanded_flag == 0 || bonuscount > gameState.bonus_max) {
           gameState.stones[this.coordinateY][this.coordinateX] = gameState.turn;
           gameState.turn = 1 - gameState.turn;
+          bonuscount = 0;
         }
 
         // let stones_status = "";
@@ -338,13 +355,16 @@
         stone_prev2: [-100, -100],
 
         height: -1,
-        width: -1
+        width: -1,
+
+        bonus_max: 0
       };
       // let boardcontents = [];
       // let stones = [];
 
       let input_boardH = document.getElementById("input_boardH");
       let input_boardW = document.getElementById("input_boardW");
+      let input_bonus = document.getElementById("input_bonus");
       let table_board;
       let board = document.getElementById("board");
 
@@ -352,6 +372,7 @@
       // let W = Number(input_boardW.value);
 
       let turn = 0;
+      let bonuscount = 0;
 
       // let stone_prev1 = [-100, -100];
       // let stone_prev2 = [-100, -100];

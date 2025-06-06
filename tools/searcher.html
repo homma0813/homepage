@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      検索ツール
+    </title>
+  </head>
+
+  <body>
+    <h1>
+      検索ツール
+    </h1>
+
+    <p>
+      <input type="text" id="query" placeholder="調べたいキーワードを入力..."> <input type="button" value="検索" id="buttonSearch"><br>
+      <label><input type="checkbox" id="Google">Google</label> <br>
+      <label><input type="checkbox" id="GoogleScholar">Google Scholar</label><br>
+      <label><input type="checkbox" id="WikipediaJa">Wikipedia(日本語)</label><br>
+      <label><input type="checkbox" id="WikipediaEn">Wikipedia(英語)</label><br>
+      <label><input type="checkbox" id="StackExchange">Stack Exchange</label>
+    </p>
+
+    <script>
+      function searchAll() {
+        const QUERY = encodeURIComponent(INPUT_QUERY.value.trim());
+
+        const URLS = [
+          "https://www.google.com/search?q=" + QUERY,
+          "https://scholar.google.com/scholar?hl=ja&q=" + QUERY,
+          "https://www.google.com/search?q=" + QUERY + "+site:ja.wikipedia.org",
+          "https://www.google.com/search?q=" + QUERY + "+site:en.wikipedia.org",
+          "https://math.stackexchange.com/search?q=" + QUERY
+        ];
+
+        for (let i = 0; i < COUNT_SITES; i++) {
+          if (INPUT_CHECK[i].checked) {
+            window.open(URLS[i], "_blank", "noopener, noreferrer");
+          }
+        }
+      }
+
+      const INPUT_QUERY = document.getElementById("query");
+      
+      let INPUT_CHECK = []; //定数の気持ちなので大文字，内包表記が使えればこんなことしなくて済んだんだけど......
+      var checks = {0:"Google", 1:"GoogleScholar", 2:"WikipediaJa", 3:"WikipediaEn", 4:"StackExchange"};
+      const COUNT_SITES = 5;
+      for (let i = 0; i < COUNT_SITES; i++) {
+        INPUT_CHECK.push(document.getElementById(checks[i]));
+      }
+
+      const BUTTON_SEARCH = document.getElementById("buttonSearch");
+      BUTTON_SEARCH.addEventListener("click", searchAll);
+    </script>
+  </body>
+</html>

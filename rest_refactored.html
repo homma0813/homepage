@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      レスト
+    </title>
+  </head>
+
+  <body>
+    <h1>
+      レスト
+    </h1>
+
+    <p>
+      盤面サイズ：<br>
+      縦 <input type="number" id="input_boardH" value="10" style="width:30px;height:15px" min="1"> × 横 <input type="number" id="input_boardW" value="10" style="width:30px;height:15px" min="1"> <br>
+      挟んだ時のボーナス <input type=="number" id="input_bonus" value="0" style="width:30px;height:15px" min="-1"> 回 ※-1で無限にボーナスを獲得
+    </p>
+    <p>
+      <input type="button" value="決定" id="button_board">
+    </p>
+
+    <p id="board">
+    </p>
+
+    <p>
+      <input type="button" value="待った！" id="button_undo">
+    </p>
+
+    <p id="prev1"></p>
+    <p id="prev2"></p>
+    <p id="player"></p>
+    <p id="result"></p>
+
+    <script>
+      /*
+        ゲームの準備
+      */
+      function boardSubmit() {
+        //gameStateのリセット
+        gameState.boardcontents = [];
+        gameState.stones = [];
+        gameState.height = Number(INPUT_BOARD_H.value);
+        gameState.width = Number(INPUT_BOARD_W.value);
+        gameState.stone_prev1 = [-100, -100];
+        gameState.stone_prev2 = [-100, -100];
+        gameState.turn = 0;
+        gameState.bonus_max = Number(INPUT_BONUS.value);
+        if (gameState.bonus_max == -1) {
+          gameState.bonus_max = gameState.height * gameState.width + 1;
+        }
+
+        //手番の表示
+        player.innerHTML = "<font color=\"red\">赤</font>の手番です。"; //ここもハードコーディングにしない方がいいのかな？
+
+        //盤面の作成
+        if (gameState.height > 0 && gameState.width > 0) {
+          var buttons = [];
+
+          for (let i = 0; i < gameState.height; i++) {
+            gameState.boardcontents.push([]);
+            gameState.stones.push([]);
+            for (let j = 0; j < gameState.width; j++) {
+              gameState.boardcontents[i].push("<input type=\"button\" id=\"button_" + i + "_" + j + "\">");
+              gameState.stones[i].push(-1);
+            }
+          }
+
+          boardRefresh(gameState.boardcontents);
+          setupButtonListeners(gameState.boardcontents);
+        } else {
+          board.innerHTML = "エラーがあります。入力内容を確認してください。"
+        }
+      }
+
+      /*
+        盤面の描画
+      */
+      function boardRefresh(contents) {
+        let board_table = "";
+        let size = 0;
+        let contents_copied = [];
+
+        board_tmp = board.innerHTML;
+
+        //本当は contents_copied = contents としたいが，こうすると参照渡しになってしまうっぽい？
+        //苦肉の策．
+        for (let i = 0; i < gameState.height; i++) {
+          contents_copied.push([]);
+          for (let j = 0; j < gameState.width; j++) {
+            contents_copied[i].push(contents[i][j]);
+          }
+        }
+
+        //置けない空間の処理，1手番前
+        if (gameState.stone_prev1[1] != -100) {
+          for (let i = 0; i < 8; i++) {
+            let dx = d[i][0];
+            let dy = d[i][1];
+            let x = gameState.stone_prev1[0] + dx;
+            let y = gameState.stone_prev1[1] + dy;
+
+            if (isValidCoordinate(x, y)) {
+              if (contents_copied[y][x] != STONERED && contents_copied[y][x] != STONEBLUE) {
+                contents_copied[y][x] = EMPTYCELL;
+              }
+            }
+          }
+        }
+
+        //置けない空間の処理，2手番前
+        if (gameState.stone_prev2[1] != -100) {
+          for (let i = 0; i < 8; i++) {
+            let dx = d[i][0];
+            let dy = d[i][1];
+            let x = gameState.stone_prev2[0] + dx;
+            let y = gameState.stone_prev2[1] + dy;
+
+            if (isValidCoordinate(x, y)) {
+              if (contents_copied[y][x] != STONERED && contents_copied[y][x] != STONEBLUE) {
+                contents_copied[y][x] = EMPTYCELL;
+              }
+            }
+          }
+        }
+
+        //盤面を実際に描画する
+        board_table = board_table + "<table border=\"1\" id=\"table_board\">";
+        for (let i = 0; i < gameState.height; i++) {
+          board_table = board_table + "<tr>";
+          for (let j = 0; j < gameState.width; j++) {
+            board_table = board_table + "<td width=\"40px\" align=\"center\">" + contents_copied[i][j] + "</td>";
+            size++; //これ何に使うんだっけ？
+          }
+          board_table = board_table + "</tr>";
+        }
+        board.innerHTML = board_table;
+      }
+
+      /*
+        ゲームの終了処理
+      */
+      function finishGame() {
+        let countNA = 0;
+        let countRed = 0;
+        let countBlue = 0;
+
+        //数える
+        table_board = document.getElementById("table_board");
+        for (let row of table_board.rows) {
+          for (let cell of row.cells) {
+            if (cell.innerText == STONERED) {
+              countNA++;
+              countRed++;
+            } else if (cell.innerText == STONEBLUE) {
+              countNA++
+              countBlue++
+            } else if (cell.innerText == EMPTYCELL) {
+              countNA++
+            }
+          }
+        }
+
+        //終了処理
+        if (countNA == gameState.height * gameState.width) {
+          result.innerHTML = "終了！<br>赤 : " + stoneRed + "、青 : " + stoneBlue + "<br>";
+          if (stoneRed > stoneBlue) {
+            result.innerHTML = result.innerHTML + "<font color=\"red\">赤の勝利です！</font>";
+          } else if (stoneRed < stoneBlue) {
+            result.innerHTML = result.innerHTML + "<font color=\"blue\">青の勝利です！</font>";
+          } else {
+            result.innerHTML = result.innerHTML + "引き分けです。"
+          }
+        }
+      }
+
+      /*
+        表内のボタンへの機能の割り当て
+      */
+      function setupButtonListeners(contents) {
+        let buttons = [];
+
+        for (let i = 0; i < gameState.height; i++) {
+          buttons.push([]);
+          for (let j = 0; j < gameState.width; j++) {
+            if (document.getElementById("button_" + i + "_" + j) != null) {
+              buttons[i].push(document.getElementById("button_" + i + "_" + j));
+              buttons[i][j].addEventListener("click", {coordinateX: j, coordinateY: i, handleEvent: boardClicked});      
+            } else {
+              buttons[i].push("・");
+            }
+          }
+        }
+      }
+
+      /*
+        表内のボタンがクリックされたときの処理（これが本体？）
+      */
+      function boardClicked(e) {
+        let opposite = 1 - gameState.turn;
+       
+        //待った用の処理
+        gameState_saved.boardcontents = gameState.boardcontents.map(row => row.slice());
+        gameState_saved.stones = gameState.stones.map(row => row.slice());
+        gameState_saved.turn = gameState.turn;
+        gameState_saved.stone_prev1 = gameState.stone_prev1.concat();
+        gameState_saved.stone_prev2 = gameState.stone_prev2.concat();
+        gameState_saved.height = gameState.height;
+        gameState_saved.width = gameState.width;
+        gameState_saved.bonus_max = gameState.bonus_max;
+        gameState_saved.bonus_count = gameState.bonus_count;
+
+
+        //置いたマスが敵によって挟まれているかどうかを判定する
+        let sanded = [0, 0, 0, 0, 0, 0, 0, 0];
+        let flagSanded = 0;
+        /* MEMO----------
+          これらの変数の働きは以下の通り．
+          まず下部で宣言した d は，各方向に次のように番号を付けている． 
+            247
+            1x6
+            035
+          向かい合う方向を足すと7になっていることに注意する．
+          方向 i に対し，
+            ・方向 i に進むと，しばらくの間は自分の色である．
+            ・途中で敵の色が現れるが，そこまでに空白マスは現れない．
+          の2条件が満たされる場合に， sanded[i] = 1 とする．そうでなければ sanded[i] = 0 とする．
+          i + J = 7 なる (i, j) に対し， sanded[i] = sanded[j] = 1 のときは，置いたマスは敵によって挟まれていることになる．
+          この場合に flagSanded = 1 とし，「挟まれている部分に置いてしまった」と判定する．
+        -------------- */
+        for (let i = 0; i < 8; i++) {
+          let dx = d[i][0];
+          let dy = d[i][1];
+          let x0 = this.coordinateX + dx;
+          let y0 = this.coordinateY + dy;
+
+          //指定した方向に1歩進んたときに盤面の外に出てしまうようなら，その方向についての判定は行わない．
+          if (!isValidCoordinate(x0, y0)) {
+            continue;
+          }
+
+          //MEMOの条件が満たされるかどうかをチェック
+          for (let j = 1; j < Math.max(gameState.width, gameState.height); j++) {
+            let x = this.coordinateX + (j * dx);
+            let y = this.coordinateY + (j * dy);
+
+            //盤面からはみ出たら終了
+            if (!isValidCoordinate(x, y)) {
+              break;
+            }
+
+            if (gameState.stones[y][x] == -1) {
+              //途中に空白マスがあるようなら，終了
+              break;
+            } else if (gameState.stones[y][x] == opposite) {
+              //敵の色が見つかったら sanded の対応する要素を 1 にして終了
+              sanded[i] = 1;
+              break;
+            }
+          }
+        }
+
+        //挟まれている場合の処理
+        for (let i = 0; i < 4; i++) {
+          let j = 7 - i;
+
+          if (sanded[i] && sanded[j]) {
+            flagSanded = 1;
+
+            let dx = d[i][0];
+            let dy = d[i][1];
+
+            //まず置いたところを敵の色にする
+            gameState.stones[this.coordinateY][this.coordinateX] = opposite;
+
+            //挟まれた部分をひっくり返す
+            for (let k = 1; k < Math.max(gameState.height, gameState.width); k++) {
+              let x = this.coordinateX - (k * dx);
+              let y = this.coordinateY - (k * dy);
+
+              //相変わらず，はみ出たら終了
+              if (!isValidCoordinate(x, y)) {
+                break;
+              }
+
+              if (gameState.stones[y][x] == gameState.turn) {
+                gameState.stones[y][x] = opposite;
+              } else {
+                //本当は「自分の色」「敵の色」「空白」の3条件を考える必要があるが，
+                //sandedの条件の下での処理なので，空白は考えなくてよい．
+                break;
+              }
+            }
+            for (let k = 1; k < Math.max(gameState.height, gameState.width); k++) {
+              let x = this.coordinateX + (k * dx);
+              let y = this.coordinateY + (k * dy);
+
+              if (!isValidCoordinate(x, y)) {
+                break;
+              }
+
+              if (gameState.stones[y][x] == gameState.turn) {
+                gameState.stones[y][x] = opposite;
+              } else {
+                break;
+              }
+            }
+          }
+        }
+
+        //flagSanded が立っているようなら，敵に手番を渡して終了
+        if (flagSanded) {
+          gameState.turn = 1 - gameState.turn;
+        } else {
+          //石を置く
+          gameState.stones[this.coordinateY][this.coordinateX] = gameState.turn;
+
+          //挟むときの処理
+          let flagSand = 0;
+          for (let i = 0; i < 8; i++) {
+            let dx = d[i][0];
+            let dy = d[i][1];
+
+            for (let j = 1; j < Math.max(gameState.height, gameState.width); j++) {
+              let x = this.coordinateX + (j * dx);
+              let y = this.coordinateY + (j * dy);
+
+              //はみ出たら終了
+              if (!isValidCoordinate(x, y)) {
+                break;
+              }
+
+              //空白マスは終了
+              if (gameState.stones[y][x] == -1) {
+                break;
+              }
+
+              //隣が自分の色でも終了
+              if (gameState.stones[y][x] == gameState.turn && j == 1) {
+                break;
+              }
+
+              //それより先に自分の色があったら，間をひっくり返す
+              if (gameState.stones[y][x] == gameState.turn && j >= 2) {
+                flagSand = 1;
+
+                for (let k = 0; k < j; k++) {
+                  let x1 = this.coordinateX + (k * dx);
+                  let y1 = this.coordinateY + (k * dy);
+                  gameState.stones[y1][x1] = gameState.turn;
+                }
+                break;
+              }
+            }
+          }
+
+          //ボーナスの処理
+          if (flagSand) {
+            gameState.bonus_count++;
+          }
+          
+          //もし「挟めなかった」あるいは「ボーナスの上限を超えた」が満たされたら，敵の手番にする
+          if (flagSand == 0 || gameState.bonus_count > gameState.bonus_max) {
+            gameState.turn = 1 - gameState.turn;
+            gameState.bonus_count = 0;
+          }
+        }
+
+        //盤面の更新
+        for (let i = 0; i < gameState.height; i++) {
+          for (let j = 0; j < gameState.width; j++) {
+            if (gameState.stones[i][j] == 0) {
+              gameState.boardcontents[i][j] = STONERED;
+            } else if (gameState.stones[i][j] == 1) {
+              gameState.boardcontents[i][j] = STONEBLUE;
+            }
+          }
+        }
+
+        //stone_prev の更新
+        gameState.stone_prev2 = gameState.stone_prev1;
+        gameState.stone_prev1 = [this.coordinateX, this.coordinateY];
+
+        //手番案内の更新
+        if (gameState.turn == 0) {
+          player.innerHTML = "<font color=\"red\">赤</font>の手番です。";
+        } else {
+          player.innerHTML = "<font color=\"blue\">青</font>の手番です。";
+        }
+
+        boardRefresh(gameState.boardcontents);
+        setupButtonListeners(gameState.boardcontents);
+        finishGame();
+      }
+
+      function gameUndo() {
+        gameState.boardcontents = gameState_saved.boardcontents.map(row => row.slice());
+        gameState.stones = gameState_saved.stones.map(row => row.slice());
+        gameState.turn = gameState_saved.turn;
+        gameState.stone_prev1 = gameState_saved.stone_prev1.concat();
+        gameState.stone_prev2 = gameState_saved.stone_prev2.concat();
+        gameState.height = gameState_saved.height;
+        gameState.width = gameState_saved.width;
+        gameState.bonus_max = gameState_saved.bonus_max;
+        gameState.bonus_count = gameState_saved.bonus_count;
+
+        //boardRefresh(gameState.boardcontents);
+        //setupButtonListeners(gameState.boardcontents);
+        board.innerHTML = board_tmp;
+        setupButtonListeners(gameState.boardcontents);
+
+        if (gameState.turn == 0) {
+          player.innerHTML = "<font color=\"red\">赤</font>の手番です。";
+        } else {
+          player.innerHTML = "<font color=\"blue\">青</font>の手番です。";
+        }
+      }
+
+      /* 
+        座標が意味をもつかどうかを判定
+      */
+      function isValidCoordinate(x, y) {
+        if (0 <= x && x < gameState.width && 0 <= y && y < gameState.height) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }
+
+      /*
+        必要な定数等の宣言を行う．
+      */
+      //ゲームの状態を一括で管理
+      let gameState = {
+        boardcontents: [],
+        stones: [],
+
+        turn: 0,                    //手番の管理．
+
+        stone_prev1: [-100, -100],  //1つ前に置かれた石の座標
+        stone_prev2: [-100, -100],  //2つ前に置かれた石の座標
+
+        height: -1,                 //盤面の縦  
+        width: -1,                  //盤面の横幅
+
+        bonus_max: 0,               //ボーナス回数
+        bonus_count: 0              //現在のボーナス
+      }
+
+      let gameState_saved = {
+        boardcontents: [],
+        stones: [],
+
+        turn: 0,                    //手番の管理．
+
+        stone_prev1: [-100, -100],  //1つ前に置かれた石の座標
+        stone_prev2: [-100, -100],  //2つ前に置かれた石の座標
+
+        height: -1,                 //盤面の縦  
+        width: -1,                  //盤面の横幅
+
+        bonus_max: 0,               //ボーナス回数
+        bonus_count: 0              //現在のボーナス
+      }
+
+      //ページ内に置かれている各種要素を取得
+      let INPUT_BOARD_H = document.getElementById("input_boardH");
+      let INPUT_BOARD_W = document.getElementById("input_boardW");
+      let INPUT_BONUS = document.getElementById("input_bonus");
+      let BOARD = document.getElementById("board");
+      let PLAYER = document.getElementById("player");
+      let RESULT = document.getElementById("result");
+      let table_board; //これだけ可変
+      let board_tmp;
+
+      //その他必要な要素
+      let d = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+      const STONERED = "<font color=\"red\">●</font>";
+      const STONEBLUE = "<font color=\"blue\">●</font>";
+      const EMPTYCELL = "";
+
+      //ボタンの設定
+      let BUTTON_BOARD = document.getElementById("button_board");
+      let BUTTON_UNDO = document.getElementById("button_undo");
+      button_board.addEventListener("click", boardSubmit);
+      button_undo.addEventListener("click", gameUndo);
+    </script>
+  </body>
+</html>
